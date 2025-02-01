@@ -1,7 +1,7 @@
 package router
 
 import (
-	"system-monitoring/src/controller"
+	"github.com/h3llmy/system-monitoring/src/controller"
 
 	"github.com/gofiber/fiber/v2"
 )

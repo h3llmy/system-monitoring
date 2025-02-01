@@ -1,7 +1,7 @@
 package main
 
 import (
-	router "system-monitoring/src/route"
+	router "github.com/h3llmy/system-monitoring/src/route"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

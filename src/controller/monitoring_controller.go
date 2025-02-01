@@ -3,8 +3,9 @@ package controller
 import (
 	"bufio"
 	"fmt"
-	"system-monitoring/src/service"
 	"time"
+
+	"github.com/h3llmy/system-monitoring/src/service"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/valyala/fasthttp"

@@ -1,4 +1,4 @@
-module system-monitoring
+module github.com/h3llmy/system-monitoring
 
 go 1.21.4
 

@@ -5,8 +5,9 @@ import (
 	"log"
 	"math"
 	"sync"
-	"system-monitoring/src/response"
 	"time"
+
+	"github.com/h3llmy/system-monitoring/src/response"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
