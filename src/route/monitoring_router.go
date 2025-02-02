@@ -6,6 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func MonitoringRoutes(versionRouter fiber.Router, controller *controller.MonitoringController) {
-	versionRouter.Get("/monitoring", controller.MonitoringHandler)
+// MonitoringRoutes adds routes for accessing monitoring metrics.
+//
+// The /monitoring route is added to the provided version group.
+func MonitoringRoutes(version fiber.Router, controller *controller.MonitoringController) {
+	monitoringRoute := version.Group("/monitoring")
+
+	monitoringRoute.Get("/", controller.MonitoringHandler)
 }

@@ -15,7 +15,9 @@ type MonitoringController struct {
 	monitoringService service.MonitoringService
 }
 
-// NewMonitoringController initializes a new MonitoringController with dependency injection.
+
+// NewMonitoringController returns a new MonitoringController instance.
+// It starts the monitoring service metrics collection goroutine.
 func NewMonitoringController(monitoringService service.MonitoringService) *MonitoringController {
 	go monitoringService.CollectMetrics()
 
@@ -24,7 +26,13 @@ func NewMonitoringController(monitoringService service.MonitoringService) *Monit
 	}
 }
 
-// MonitoringHandler streams system metrics to the client.
+
+// MonitoringHandler handles HTTP requests to stream system metrics in real-time.
+// It sets up the response headers for server-sent events and uses a stream writer
+// to periodically send JSON-encoded system metrics data to the client every second.
+// The function retrieves the metrics history from the monitoring service and writes
+// it to the response body. If an error occurs while retrieving the metrics, an error
+// message is sent instead.
 func (controller *MonitoringController) MonitoringHandler(c *fiber.Ctx) error  {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")

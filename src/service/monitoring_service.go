@@ -34,7 +34,9 @@ var (
 	prevTime      time.Time
 )
 
-// CollectMetrics collects system metrics and maintains the latest 60 records.
+
+// CollectMetrics continuously collects system metrics and stores them in a ring buffer of a limited size.
+// The metrics are collected every second and stored in the order of collection.
 func (sm *SystemMonitor) CollectMetrics() {
 	for {
 		startTime := time.Now()
@@ -62,13 +64,16 @@ func (sm *SystemMonitor) CollectMetrics() {
 	}
 }
 
-// GetHistory returns the collected metrics history in JSON format.
+// GetHistory returns the collected system metrics in JSON format.
+// The returned metrics are from the latest 60 seconds, or as many as have been collected.
+// The metrics are sorted in the order of collection.
 func (sm *SystemMonitor) GetHistory() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	return json.Marshal(history)
 }
 
+// getCpuMetrics returns the current CPU usage as a float64 in the range [0.00, 100.00].
 func getCpuMetrics() float64 {
 	cpuPercentages, err := cpu.Percent(0, false)
 	if err != nil {
@@ -77,6 +82,10 @@ func getCpuMetrics() float64 {
 	return math.Floor(cpuPercentages[0]*100) / 100
 }
 
+// getMemoryMetrics retrieves the current memory usage statistics.
+// It returns a MemoryStats struct containing the used and total memory,
+// both measured in megabytes. In case of an error, the used and total
+// values will default to zero, and an error message will be logged.
 func getMemoryMetrics() response.MemoryStats {
 	memStats, err := mem.VirtualMemory()
 	if err != nil {
@@ -88,6 +97,9 @@ func getMemoryMetrics() response.MemoryStats {
 	}
 }
 
+// getDiskMetrics retrieves the current disk usage statistics.
+// It returns a slice of DiskStats containing the device name, mount point, file system type, used and total disk space,
+// both measured in gigabytes. In case of an error, the returned slice will be empty, and an error message will be logged.
 func getDiskMetrics() []response.DiskStats {
 	diskStats, err := disk.Partitions(true)
 	if err != nil {
@@ -110,6 +122,9 @@ func getDiskMetrics() []response.DiskStats {
 	return disks
 }
 
+// getNetworkMetrics retrieves the current network usage statistics.
+// It returns a NetworkStats struct containing the number of megabits per second sent and received.
+// In case of an error, the up and down values will default to zero, and an error message will be logged.
 func getNetworkMetrics() response.NetworkStats {
 	counters, err := gopsutil_net.IOCounters(true)
 	if err != nil {
