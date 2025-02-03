@@ -6,53 +6,48 @@ import (
 	"os"
 
 	"github.com/h3llmy/system-monitoring/src/response"
-	"github.com/h3llmy/system-monitoring/src/utils"
+	httpClient "github.com/h3llmy/system-monitoring/src/utils/httpClient"
 )
 
 type JellyfinService struct {
-	client utils.HttpClient
-	baseUrl string
+	client *httpClient.Client
 }
 
-// NewJellyfinService initializes a new JellyfinService with dependency injection.
+// NewJellyfinService creates a new JellyfinService instance.
 //
-// It expects environment variables JELLYFIN_TOKEN and JELLYFIN_BASE_URL to be set.
-func NewJellyfinService(client utils.HttpClient) *JellyfinService{
-	token := os.Getenv("JELLYFIN_TOKEN")
-	baseUrl := os.Getenv("JELLYFIN_BASE_URL")
-	headers := map[string]string{"X-Emby-Token": token}
+// It sets the base URL to the environment variable JELLYFIN_BASE_URL and the
+// X-Emby-Token header to the environment variable JELLYFIN_TOKEN.
+//
+// It returns a pointer to a JellyfinService instance.
+func NewJellyfinService(client *httpClient.Client) *JellyfinService {
+	jellyfinBaseUrl := os.Getenv("JELLYFIN_BASE_URL")
+
+	headers := map[string]string{
+		"X-Emby-Token": os.Getenv("JELLYFIN_TOKEN"),
+	}
+
+	client.SetBaseURL(jellyfinBaseUrl)
 	client.SetHeaders(headers)
+
 	return &JellyfinService{
 		client: client,
-		baseUrl: baseUrl,
 	}
 }
 
-
-// GetLibrariesItemCount retrieves the current item count for movies, series and songs.
+// GetLibrariesItemCount retrieves the current item count for movies, series and songs from the Jellyfin API.
 //
-// The response is unmarshalled into a response.LibrariesItemCountResponse struct.
-func (s *JellyfinService) GetLibrariesItemCount() (*response.LibrariesItemCountResponse, error){
-	url := fmt.Sprintf("%s/Items/Counts", s.baseUrl)
-
-	resp, err := s.client.Get(url)
-
+// It returns a JSON response containing the item count for each media type. In case of an error, a JSON response with an
+// error message is returned instead.
+func (s *JellyfinService) GetLibrariesItemCount() (*response.LibrariesItemCountResponse, error) {
+	res, err := s.client.Get("/Items/Counts")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get items: %w", err)	
+		return nil, fmt.Errorf("failed to get Jellyfin count: %w", err)
 	}
 
-	defer resp.Body.Close()
-
-	
-	body, err := utils.ReadResponseBody(resp)	
-	if err != nil {
-		return nil, fmt.Errorf("failed to get items: %w", err)	
+	var itemsCount response.LibrariesItemCountResponse
+	if err = json.Unmarshal(res, &itemsCount); err != nil {
+		return nil, fmt.Errorf("failed to read Jellyfin count: %w", err)
 	}
 
-	var itemCount response.LibrariesItemCountResponse
-	err = json.Unmarshal(body, &itemCount); if err != nil {
-        return nil, fmt.Errorf("failed to unmarshal JSON response: %w", err)
-    }
-
-	return &itemCount, nil
+	return &itemsCount, nil
 }
