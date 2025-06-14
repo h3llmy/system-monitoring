@@ -13,4 +13,8 @@ func MonitoringRoutes(version fiber.Router, controller *controller.MonitoringCon
 	monitoringRoute := version.Group("/monitoring")
 
 	monitoringRoute.Get("/", controller.MonitoringHandler)
+	monitoringRoute.Get("/cpu", controller.MonitoringCpuHandler)
+	monitoringRoute.Get("/memory", controller.MonitoringMemoryHandler)
+	monitoringRoute.Get("/disk", controller.MonitoringDiskHandler)
+	monitoringRoute.Get("/network", controller.MonitoringNetworkHandler)
 }
