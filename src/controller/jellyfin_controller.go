@@ -9,13 +9,13 @@ import (
 )
 
 type JellyfinController struct {
-	jfService service.JellyfinService
+	jfService *service.JellyfinService
 }
 
 // NewJellyfinController returns a new JellyfinController instance.
 //
 // It accepts a service.JellyfinService dependency which is used to interact with the Jellyfin API.
-func NewJellyfinController(jfService service.JellyfinService) *JellyfinController {
+func NewJellyfinController(jfService *service.JellyfinService) *JellyfinController {
 	return &JellyfinController{
 		jfService: jfService,
 	}

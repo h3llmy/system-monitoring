@@ -13,7 +13,9 @@ import (
 func MonitoringRoutes(version fiber.Router, container *dig.Container) {
 	monitoringRoute := version.Group("/monitoring")
 
-	container.Invoke(func(controller *controller.MonitoringController) {
+	container.Invoke(func(
+		controller *controller.MonitoringController,
+	) {
 		monitoringRoute.Get("/", controller.MonitoringHandler)
 		monitoringRoute.Get("/cpu", controller.MonitoringCpuHandler)
 		monitoringRoute.Get("/memory", controller.MonitoringMemoryHandler)
