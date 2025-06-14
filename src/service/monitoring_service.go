@@ -9,6 +9,8 @@ import (
 
 	"github.com/h3llmy/system-monitoring/src/response"
 
+	"maps"
+
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
@@ -53,9 +55,7 @@ func init() {
 		}
 	}
 	if counters, err := disk.IOCounters(); err == nil {
-		for name, cnt := range counters {
-			prevDiskCounters[name] = cnt
-		}
+		maps.Copy(prevDiskCounters, counters)
 	}
 }
 
