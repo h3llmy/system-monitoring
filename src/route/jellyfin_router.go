@@ -12,7 +12,9 @@ import (
 func JellyfinRouter(version fiber.Router, container *dig.Container) {
 	jellyfinRoute := version.Group("/jellyfin")
 
-	container.Invoke(func(controller *controller.JellyfinController) {
-		jellyfinRoute.Get("/Count", controller.GetJellyfinCount)
+	container.Invoke(func(
+		controller *controller.JellyfinController,
+	) {
+		jellyfinRoute.Get("/count", controller.GetJellyfinCount)
 	})
 }
