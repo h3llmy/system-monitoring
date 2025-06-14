@@ -15,7 +15,7 @@ type JellyfinController struct {
 // NewJellyfinController returns a new JellyfinController instance.
 //
 // It accepts a service.JellyfinService dependency which is used to interact with the Jellyfin API.
-func NewJellyfinController(jfService service.JellyfinService) *JellyfinController{
+func NewJellyfinController(jfService service.JellyfinService) *JellyfinController {
 	return &JellyfinController{
 		jfService: jfService,
 	}
@@ -27,9 +27,9 @@ func NewJellyfinController(jfService service.JellyfinService) *JellyfinControlle
 // message is returned instead.
 func (controller *JellyfinController) GetJellyfinCount(c *fiber.Ctx) error {
 	itemCount, err := controller.jfService.GetLibrariesItemCount()
-	if err != nil{
+	if err != nil {
 		c.Status(http.StatusInternalServerError).JSON(response.BaseErrorResponse{
-			Error: true,
+			Error:   true,
 			Message: err.Error(),
 		})
 	}

@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	router "github.com/h3llmy/system-monitoring/src/route"
+	"github.com/h3llmy/system-monitoring/src/utils/global_error"
 	"github.com/joho/godotenv"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,7 +23,10 @@ import (
 // - Starts the HTTP server on port 3000.
 func main() {
 	loadEnv()
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		// Global custom error handler
+		ErrorHandler: global_error.GlobalErrorHandler,
+	})
 
 	port := os.Getenv("PORT")
 
@@ -29,14 +34,14 @@ func main() {
 
 	router.Routes(app)
 
-	app.Listen(fmt.Sprintf(":%s", port))
+	log.Fatal(app.Listen(fmt.Sprintf(":%s", port)))
 }
 
 // loadEnv loads environment variables from a .env file.
 // If the file cannot be loaded, the function panics with an error message.
-func loadEnv()  {
+func loadEnv() {
 	err := godotenv.Load()
 	if err != nil {
-	  panic("Error loading .env file")
+		panic("Error loading .env file")
 	}
 }
