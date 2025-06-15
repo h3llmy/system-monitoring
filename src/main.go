@@ -14,6 +14,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
+	"github.com/gofiber/fiber/v2/middleware/keyauth"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
@@ -59,6 +60,7 @@ func initMiddlewares(app *fiber.App) {
 	app.Use(logger.New(config.LoggerConfig))
 	app.Use(limiter.New(config.LimiterConfig))
 	app.Use(recover.New())
+	app.Use(keyauth.New(config.KeyAuthConfig))
 
 	app.Get("/monitor", monitor.New(config.MonitorConfig))
 }
