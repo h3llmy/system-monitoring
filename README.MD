@@ -6,7 +6,7 @@
 go run src/main.go
 ```
 
-## TODO: watch mode using air
+## watch mode using air
 
 ```sh
 air
