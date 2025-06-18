@@ -3,13 +3,13 @@ package router
 import (
 	"time"
 
-	"github.com/h3llmy/system-monitoring/src/config"
+	// "github.com/h3llmy/system-monitoring/src/config"
 	"github.com/h3llmy/system-monitoring/src/controller"
 	"github.com/h3llmy/system-monitoring/src/service"
 	httpClient "github.com/h3llmy/system-monitoring/src/utils/httpClient"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/keyauth"
+	// "github.com/gofiber/fiber/v2/middleware/keyauth"
 	"go.uber.org/dig"
 )
 
@@ -18,7 +18,7 @@ func Routes(app *fiber.App) {
 	container := setupContainer()
 
 	v1 := app.Group("/api/v1")
-	v1.Use(keyauth.New(config.KeyAuthConfig))
+	// v1.Use(keyauth.New(config.KeyAuthConfig))
 
 	MonitoringRoutes(v1, container)
 	JellyfinRouter(v1, container)
@@ -43,4 +43,3 @@ func setupContainer() *dig.Container {
 
 	return container
 }
-

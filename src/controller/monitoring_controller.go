@@ -62,26 +62,26 @@ func (controller *MonitoringController) MonitoringHandler(c *fiber.Ctx) error {
 // The client will receive a continuous stream of events, with the type "data" and a payload of the current CPU usage metrics.
 // The event-stream connection is kept open until the client closes it.
 func (controller *MonitoringController) MonitoringCpuHandler(c *fiber.Ctx) error {
-	return controller.streamHandler(c, controller.monitoringService.GetCpuHistory)
+	return controller.streamHandler(c, controller.monitoringService.GetCpuMetrics)
 }
 
 // MonitoringMemoryHandler streams the collected memory usage metrics history to the client in a series of events.
 // The client will receive a continuous stream of events, with the type "data" and a payload of the current memory usage metrics.
 // The event-stream connection is kept open until the client closes it.
 func (controller *MonitoringController) MonitoringMemoryHandler(c *fiber.Ctx) error {
-	return controller.streamHandler(c, controller.monitoringService.GetMemoryHistory)
+	return controller.streamHandler(c, controller.monitoringService.GetMemoryMetrics)
 }
 
 // MonitoringDiskHandler streams the collected disk usage metrics history to the client in a series of events.
 // The client will receive a continuous stream of events, with the type "data" and a payload of the current disk usage metrics.
 // The event-stream connection is kept open until the client closes it.
 func (controller *MonitoringController) MonitoringDiskHandler(c *fiber.Ctx) error {
-	return controller.streamHandler(c, controller.monitoringService.GetDiskHistory)
+	return controller.streamHandler(c, controller.monitoringService.GetDiskMetrics)
 }
 
 // MonitoringNetworkHandler streams the collected network usage metrics history to the client in a series of events.
 // The client will receive a continuous stream of events, with the type "data" and a payload of the current network usage metrics.
 // The event-stream connection is kept open until the client closes it.
 func (controller *MonitoringController) MonitoringNetworkHandler(c *fiber.Ctx) error {
-	return controller.streamHandler(c, controller.monitoringService.GetNetworkHistory)
+	return controller.streamHandler(c, controller.monitoringService.GetNetworkMetrics)
 }

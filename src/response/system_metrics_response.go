@@ -3,11 +3,15 @@ package response
 type (
 	// SystemMetrics represents the collected system performance data.
 	SystemMetrics struct {
-		Timestamp string        `json:"timestamp,omitempty"`
-		CPU       *float64      `json:"cpu,omitempty"`
-		Memory    *MemoryStats  `json:"memory,omitempty"`
-		Disk      *[]DiskStats  `json:"disk,omitempty"`
-		Network   *NetworkStats `json:"network,omitempty"`
+		Timestamp string       `json:"timestamp,omitempty"`
+		Disk      *[]DiskStats `json:"disk,omitempty"`
+		Matrics   *[]Matrics   `json:"matrics,omitempty"`
+	}
+
+	Matrics struct {
+		CPU     *float64      `json:"cpu,omitempty"`
+		Memory  *MemoryStats  `json:"memory,omitempty"`
+		Network *NetworkStats `json:"network,omitempty"`
 	}
 
 	// MemoryStats holds memory usage information.
