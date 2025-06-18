@@ -39,7 +39,7 @@ func main() {
 
 	router.Routes(app)
 
-	log.Fatal(app.Listen(fmt.Sprintf("127.0.0.1:%s", port)))
+	log.Fatal(app.Listen(fmt.Sprintf(":%s", port)))
 }
 
 // initMiddlewares configures and registers middleware for the Fiber application.
@@ -60,14 +60,17 @@ func initMiddlewares(app *fiber.App) {
 	app.Use(limiter.New(config.LimiterConfig))
 	app.Use(recover.New())
 
+	app.Static("/", "./system-monitoring-dashboard/dist")
 	app.Get("/monitor", monitor.New(config.MonitorConfig))
 }
 
 // loadEnv loads environment variables from a .env file.
 // If the file cannot be loaded, the function panics with an error message.
 func loadEnv() {
-	err := env.Load()
-	if err != nil {
-		panic("Error loading .env file")
+	if os.Getenv("ENV") != "production" {
+		if err := env.Load(); err != nil {
+			log.Fatalf("Error loading .env file: %v", err)
+		}
 	}
 }
+

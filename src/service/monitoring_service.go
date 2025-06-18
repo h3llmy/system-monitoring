@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"path"
 	"sync"
 	"time"
 
@@ -204,7 +205,7 @@ func getMemoryMetrics() response.MemoryStats {
 // the current and previous counters. If an error occurs while retrieving the
 // counters, an empty slice is returned.
 func getDiskMetrics(elapsed float64) []response.DiskStats {
-	parts, err := disk.Partitions(true)
+	parts, err := disk.Partitions(false)
 	if err != nil {
 		log.Println("Error getting disk partitions:", err)
 		return nil
@@ -226,8 +227,9 @@ func getDiskMetrics(elapsed float64) []response.DiskStats {
 			wbps = float64(curr.WriteBytes-prev.WriteBytes) / elapsed
 		}
 
+		diskName := path.Base(p.Device)
 		stats = append(stats, response.DiskStats{
-			Name:       p.Device,
+			Name:       diskName,
 			Mount:      p.Mountpoint,
 			Type:       p.Fstype,
 			Used:       float64(usage.Used) / (1024 * 1024 * 1024),
