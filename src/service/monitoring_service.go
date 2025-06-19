@@ -29,6 +29,9 @@ type MonitoringService interface {
 
 type SystemMonitor struct{}
 
+// NewSystemMonitorService creates a new SystemMonitor instance which is responsible for collecting system metrics.
+//
+// The provided service is started in a goroutine to collect system metrics in the background.
 func NewSystemMonitorService() MonitoringService {
 	return &SystemMonitor{}
 }
@@ -42,6 +45,8 @@ var (
 	maxHistory       = 60
 )
 
+// init initializes the history and network/disk counters with the current values.
+// This is done to calculate the difference between the current and previous values.
 func init() {
 	prevTime = time.Now()
 	if stats, err := gopsutil_net.IOCounters(true); err == nil {
@@ -55,6 +60,19 @@ func init() {
 	history.Matrics = &[]response.Matrics{}
 }
 
+// CollectMetrics is an infinite loop that collects system metrics at 1 second intervals.
+//
+// It collects the following metrics:
+// - CPU usage percentage
+// - Memory usage statistics (used, total)
+// - Disk usage statistics (used, total)
+// - Network traffic statistics (up, down)
+//
+// The collected metrics are stored in the history field of the service.
+// The history field is a slice of Matrics, which is a struct that holds the collected metrics.
+// The history field is trimmed to a maximum length of maxHistory (default 60).
+//
+// The function is intended to be run in a goroutine.
 func (sm *SystemMonitor) CollectMetrics() {
 	for {
 		now := time.Now()
@@ -89,12 +107,28 @@ func (sm *SystemMonitor) CollectMetrics() {
 	}
 }
 
+// GetHistory returns the collected system metrics history as a JSON payload.
+//
+// The returned payload is a slice of Matrics, which is a struct that holds the collected metrics.
+// The Matrics struct contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - CPU: the CPU usage percentage
+// - Memory: memory usage statistics (used, total)
+// - Disk: disk usage statistics (used, total)
+// - Network: network traffic statistics (up, down)
+//
+// The payload is ordered by timestamp, with the most recent metrics first.
 func (sm *SystemMonitor) GetHistory() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	return json.Marshal(history)
 }
 
+// GetCpuMetrics returns the most recent CPU usage metric as a JSON payload.
+//
+// The returned payload contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - CPU: the CPU usage percentage
 func (sm *SystemMonitor) GetCpuMetrics() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -113,6 +147,11 @@ func (sm *SystemMonitor) GetCpuMetrics() ([]byte, error) {
 	})
 }
 
+// GetMemoryMetrics returns the most recent memory usage metric as a JSON payload.
+//
+// The returned payload contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - Memory: memory usage statistics (used, total)
 func (sm *SystemMonitor) GetMemoryMetrics() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -131,6 +170,11 @@ func (sm *SystemMonitor) GetMemoryMetrics() ([]byte, error) {
 	})
 }
 
+// GetDiskMetrics returns the most recent disk usage metric as a JSON payload.
+//
+// The returned payload contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - Disk: disk usage statistics (used, total)
 func (sm *SystemMonitor) GetDiskMetrics() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -144,6 +188,11 @@ func (sm *SystemMonitor) GetDiskMetrics() ([]byte, error) {
 	})
 }
 
+// GetNetworkMetrics returns the most recent network traffic metrics as a JSON payload.
+//
+// The returned payload contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - Network: network traffic statistics (up, down)
 func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -162,6 +211,8 @@ func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
 	})
 }
 
+// getCpuMetrics returns the current CPU usage as a percentage.
+// It returns 0 if an error occurs.
 func getCpuMetrics() float64 {
 	pct, err := cpu.Percent(0, false)
 	if err != nil {
@@ -171,6 +222,14 @@ func getCpuMetrics() float64 {
 	return math.Round(pct[0]*100) / 100
 }
 
+// getMemoryMetrics returns the current memory usage statistics.
+//
+// The returned struct contains the following fields:
+// - Used: the current amount of memory used, in bytes
+// - Total: the total amount of memory, in bytes
+//
+// If an error occurs, the function logs the error and returns an empty
+// response.MemoryStats struct.
 func getMemoryMetrics() response.MemoryStats {
 	m, err := mem.VirtualMemory()
 	if err != nil {
@@ -178,11 +237,25 @@ func getMemoryMetrics() response.MemoryStats {
 		return response.MemoryStats{}
 	}
 	return response.MemoryStats{
-		Used:  int64(m.Used / 1024 / 1024),
-		Total: int64(m.Total / 1024 / 1024),
+		Used:  int64(m.Used),
+		Total: int64(m.Total),
 	}
 }
 
+// getDiskMetrics returns disk usage statistics for all partitions.
+//
+// It calculates the read and write bytes per second (Bps) based on the elapsed time
+// since the last call. The function retrieves partition information and I/O counters
+// for each disk and computes statistics including the used and total space, read bytes,
+// write bytes, and Bps values.
+//
+// Parameters:
+// - elapsed: Time duration in seconds since the last invocation, used to calculate Bps.
+//
+// Returns:
+// A slice of response.DiskStats containing the disk usage statistics for each partition.
+// If an error occurs while retrieving partition information, an empty slice is returned
+// and the error is logged.
 func getDiskMetrics(elapsed float64) []response.DiskStats {
 	parts, err := disk.Partitions(false)
 	if err != nil {
@@ -208,21 +281,35 @@ func getDiskMetrics(elapsed float64) []response.DiskStats {
 
 		diskName := path.Base(p.Device)
 		stats = append(stats, response.DiskStats{
-			Name:       diskName,
-			Mount:      p.Mountpoint,
-			Type:       p.Fstype,
-			Used:       float64(usage.Used) / (1024 * 1024 * 1024),
-			Total:      float64(usage.Total) / (1024 * 1024 * 1024),
-			ReadBytes:  curr.ReadBytes,
-			WriteBytes: curr.WriteBytes,
-			ReadBps:    rbps,
-			WriteBps:   wbps,
+			Name:        diskName,
+			Mount:       p.Mountpoint,
+			Type:        p.Fstype,
+			UsedPercent: usage.UsedPercent,
+			Used:        usage.Used,
+			Total:       usage.Total,
+			ReadBytes:   curr.ReadBytes,
+			WriteBytes:  curr.WriteBytes,
+			ReadBps:     rbps,
+			WriteBps:    wbps,
 		})
 		prevDiskCounters[p.Device] = curr
 	}
 	return stats
 }
 
+// getNetworkMetrics returns network traffic statistics.
+//
+// It calculates the uplink and downlink values in Mbps based on the elapsed time
+// since the last call. The function retrieves I/O counters for all network interfaces
+// and computes statistics including the current uplink and downlink values.
+//
+// Parameters:
+// - elapsed: Time duration in seconds since the last invocation, used to calculate Mbps.
+//
+// Returns:
+// A response.NetworkStats containing the network traffic statistics.
+// If an error occurs while retrieving I/O counters, an empty struct is returned
+// and the error is logged.
 func getNetworkMetrics(elapsed float64) response.NetworkStats {
 	counters, err := gopsutil_net.IOCounters(true)
 	if err != nil {
