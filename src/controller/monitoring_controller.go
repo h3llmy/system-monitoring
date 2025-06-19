@@ -85,3 +85,10 @@ func (controller *MonitoringController) MonitoringDiskHandler(c *fiber.Ctx) erro
 func (controller *MonitoringController) MonitoringNetworkHandler(c *fiber.Ctx) error {
 	return controller.streamHandler(c, controller.monitoringService.GetNetworkMetrics)
 }
+
+// MonitoringSensorHandler streams the collected temperature sensor metrics history to the client in a series of events.
+// The client will receive a continuous stream of events, with the type "data" and a payload of the current temperature sensor metrics.
+// The event-stream connection is kept open until the client closes it.
+func (controller *MonitoringController) MonitoringSensorHandler(c *fiber.Ctx) error {
+	return controller.streamHandler(c, controller.monitoringService.GetSensorsMetrics)
+}

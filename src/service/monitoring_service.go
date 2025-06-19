@@ -30,6 +30,7 @@ type MonitoringService interface {
 	GetMemoryMetrics() ([]byte, error)
 	GetDiskMetrics() ([]byte, error)
 	GetNetworkMetrics() ([]byte, error)
+	GetSensorsMetrics() ([]byte, error)
 }
 
 type SystemMonitor struct{}
@@ -218,6 +219,33 @@ func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
 	}{
 		Timestamp: history.Timestamp,
 		Network:   last,
+	})
+}
+
+// GetSensorsMetrics returns the most recent sensors metrics as a JSON payload.
+//
+// The returned payload contains the following fields:
+// - Timestamp: the ISO 8601 timestamp of when the metrics were collected
+// - CPU: a slice of CoreTemperatureStats for each CPU core
+// - Ambient: the ambient temperature
+// - GPU: a slice of CoreTemperatureStats for each GPU core
+// - Core: a slice of CoreTemperatureStats for each core (both CPU and GPU)
+func (sm *SystemMonitor) GetSensorsMetrics() ([]byte, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	return json.Marshal(struct {
+		Timestamp string                           `json:"timestamp"`
+		CPU       []*response.CoreTemperatureStats `json:"cpu,omitempty"`
+		Ambient   *float64                         `json:"ambient,omitempty"`
+		GPU       []*response.CoreTemperatureStats `json:"gpu,omitempty"`
+		Core      []*response.CoreTemperatureStats `json:"core,omitempty"`
+	}{
+		Timestamp: history.Timestamp,
+		CPU:       history.Temprature.CPU,
+		Ambient:   history.Temprature.Ambient,
+		GPU:       history.Temprature.GPU,
+		Core:      history.Temprature.Core,
 	})
 }
 
@@ -430,6 +458,9 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 	return result, nil
 }
 
+// getFriendlyName returns a human-readable name for a sensor based on its key.
+// It performs a simple mapping for common patterns like "package" and "gpu".
+// If no common pattern is found, it title-cases the words in the sensorKey.
 func getFriendlyName(sensorKey string) string {
 	// Simple mapping for common patterns
 	key := strings.ToLower(sensorKey)
