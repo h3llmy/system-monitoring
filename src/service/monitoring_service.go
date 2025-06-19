@@ -398,19 +398,19 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 		case strings.Contains(key, "package"):
 			// CPU package temperature
 			cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "gpu"):
 			// GPU temperature
 			gpuTemps = append(gpuTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "core"):
 			// CPU core temperature
 			coreTemps = append(coreTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "acpitz"):
@@ -420,7 +420,7 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 			}
 		default:
 			// Try to categorize other sensors
-			friendlyName := getFriendlyName(t.SensorKey)
+			friendlyName := getSensorsName(t.SensorKey)
 			if strings.Contains(strings.ToLower(friendlyName), "cpu") {
 				cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
 					Name: friendlyName,
@@ -458,10 +458,10 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 	return result, nil
 }
 
-// getFriendlyName returns a human-readable name for a sensor based on its key.
-// It performs a simple mapping for common patterns like "package" and "gpu".
-// If no common pattern is found, it title-cases the words in the sensorKey.
-func getFriendlyName(sensorKey string) string {
+// getSensorsName returns a human-readable name for the given sensorKey.
+// It uses simple pattern matching for common patterns and falls back to title-casing
+// the words in sensorKey if no match is found.
+func getSensorsName(sensorKey string) string {
 	// Simple mapping for common patterns
 	key := strings.ToLower(sensorKey)
 
