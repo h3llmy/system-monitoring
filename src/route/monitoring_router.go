@@ -21,5 +21,6 @@ func MonitoringRoutes(version fiber.Router, container *dig.Container) {
 		monitoringRoute.Get("/memory", controller.MonitoringMemoryHandler)
 		monitoringRoute.Get("/disk", controller.MonitoringDiskHandler)
 		monitoringRoute.Get("/network", controller.MonitoringNetworkHandler)
+		monitoringRoute.Get("/sensors", controller.MonitoringSensorHandler)
 	})
 }
