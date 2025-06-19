@@ -2,20 +2,25 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"maps"
 
 	"github.com/h3llmy/system-monitoring/src/response"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
 	gopsutil_net "github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 type MonitoringService interface {
@@ -82,12 +87,17 @@ func (sm *SystemMonitor) CollectMetrics() {
 		memStats := getMemoryMetrics()
 		diskStats := getDiskMetrics(elapsed)
 		netStats := getNetworkMetrics(elapsed)
+		temp, err := getTemperatureSensors()
+		if err != nil {
+			log.Println(err)
+		}
 
 		mu.Lock()
 
 		// Update disk and timestamp
 		history.Timestamp = now.Format(time.RFC3339)
 		history.Disk = &diskStats
+		history.Temprature = temp
 
 		// Append to history and trim if needed
 		mat := response.Matrics{
@@ -330,4 +340,115 @@ func getNetworkMetrics(elapsed float64) response.NetworkStats {
 		Up:   int64(math.Round(up)),
 		Down: int64(math.Round(down)),
 	}
+}
+
+// getTemperatureSensors returns a slice of response.TemperatureStats that contains
+// the temperatures of all found sensors. The returned slice is sorted by sensor name.
+//
+// The function maps the sensor key to a friendly label, using a hardcoded mapping
+// for well-known substrings. If no mapping is found, it uses a fallback that
+// title-cases the words in the sensor key.
+//
+// If an error occurs while retrieving the temperatures, an empty slice is returned
+// and the error is logged.
+func getTemperatureSensors() (*response.TemperatureStats, error) {
+	temps, err := sensors.SensorsTemperatures()
+	if err != nil {
+		return nil, err
+	}
+
+	result := &response.TemperatureStats{}
+	var cpuTemps []*response.CoreTemperatureStats
+	var gpuTemps []*response.CoreTemperatureStats
+	var coreTemps []*response.CoreTemperatureStats
+	var ambientTemp *float64
+
+	for _, t := range temps {
+		key := strings.ToLower(t.SensorKey)
+
+		switch {
+		case strings.Contains(key, "package"):
+			// CPU package temperature
+			cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
+				Name: getFriendlyName(t.SensorKey),
+				Temp: t.Temperature,
+			})
+		case strings.Contains(key, "gpu"):
+			// GPU temperature
+			gpuTemps = append(gpuTemps, &response.CoreTemperatureStats{
+				Name: getFriendlyName(t.SensorKey),
+				Temp: t.Temperature,
+			})
+		case strings.Contains(key, "core"):
+			// CPU core temperature
+			coreTemps = append(coreTemps, &response.CoreTemperatureStats{
+				Name: getFriendlyName(t.SensorKey),
+				Temp: t.Temperature,
+			})
+		case strings.Contains(key, "acpitz"):
+			// Ambient temperature - keep the highest one
+			if ambientTemp == nil || t.Temperature > *ambientTemp {
+				ambientTemp = &t.Temperature
+			}
+		default:
+			// Try to categorize other sensors
+			friendlyName := getFriendlyName(t.SensorKey)
+			if strings.Contains(strings.ToLower(friendlyName), "cpu") {
+				cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
+					Name: friendlyName,
+					Temp: t.Temperature,
+				})
+			} else {
+				// Default to core temps for unknown sensors
+				coreTemps = append(coreTemps, &response.CoreTemperatureStats{
+					Name: friendlyName,
+					Temp: t.Temperature,
+				})
+			}
+		}
+	}
+
+	// Assign non-empty slices to result
+	if len(cpuTemps) > 0 {
+		result.CPU = cpuTemps
+	}
+	if len(gpuTemps) > 0 {
+		result.GPU = gpuTemps
+	}
+	if len(coreTemps) > 0 {
+		result.Core = coreTemps
+	}
+	if ambientTemp != nil {
+		result.Ambient = ambientTemp
+	}
+
+	// Check if we found any temperatures
+	if result.CPU == nil && result.GPU == nil && result.Core == nil && result.Ambient == nil {
+		return nil, fmt.Errorf("no temperature sensors found")
+	}
+
+	return result, nil
+}
+
+func getFriendlyName(sensorKey string) string {
+	// Simple mapping for common patterns
+	key := strings.ToLower(sensorKey)
+
+	if strings.Contains(key, "package") {
+		return "CPU"
+	}
+	if strings.Contains(key, "gpu") {
+		return "GPU"
+	}
+	if strings.Contains(key, "acpitz") {
+		return "Ambient"
+	}
+
+	// Fallback: title-case words in sensorKey
+	parts := strings.Split(sensorKey, "_")
+	caser := cases.Title(language.English)
+	for i := range parts {
+		parts[i] = caser.String(parts[i])
+	}
+	return strings.Join(parts, " ")
 }
