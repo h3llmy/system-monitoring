@@ -3,13 +3,11 @@ package router
 import (
 	"time"
 
-	// "github.com/h3llmy/system-monitoring/src/config"
 	"github.com/h3llmy/system-monitoring/src/controller"
 	"github.com/h3llmy/system-monitoring/src/service"
 	httpClient "github.com/h3llmy/system-monitoring/src/utils/httpClient"
 
 	"github.com/gofiber/fiber/v2"
-	// "github.com/gofiber/fiber/v2/middleware/keyauth"
 	"go.uber.org/dig"
 )
 
@@ -22,6 +20,7 @@ func Routes(app *fiber.App) {
 
 	MonitoringRoutes(v1, container)
 	JellyfinRouter(v1, container)
+	DockerRouter(v1, container)
 }
 
 // SetupContainer initializes the DI container and registers all dependencies.
@@ -36,10 +35,12 @@ func setupContainer() *dig.Container {
 	// Provide services
 	container.Provide(service.NewSystemMonitorService)
 	container.Provide(service.NewJellyfinService)
+	container.Provide(service.NewDockerService)
 
 	// Provide controllers
 	container.Provide(controller.NewMonitoringController)
 	container.Provide(controller.NewJellyfinController)
+	container.Provide(controller.NewDockerController)
 
 	return container
 }
