@@ -1,13 +1,13 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"maps"
@@ -43,12 +43,9 @@ func NewSystemMonitorService() MonitoringService {
 }
 
 var (
-	history          response.SystemMetrics
-	mu               sync.Mutex
+	systemHistory    response.SystemMetrics
 	prevNetStats     = make(map[string]gopsutil_net.IOCountersStat)
 	prevDiskCounters = make(map[string]disk.IOCountersStat)
-	prevTime         time.Time
-	maxHistory       = 60
 )
 
 // init initializes the history and network/disk counters with the current values.
@@ -63,7 +60,7 @@ func init() {
 	if counters, err := disk.IOCounters(); err == nil {
 		maps.Copy(prevDiskCounters, counters)
 	}
-	history.Matrics = &[]response.Matrics{}
+	systemHistory.Matrics = &[]response.Matrics{}
 }
 
 // CollectMetrics is an infinite loop that collects system metrics at 1 second intervals.
@@ -80,14 +77,16 @@ func init() {
 //
 // The function is intended to be run in a goroutine.
 func (sm *SystemMonitor) CollectMetrics() {
-	for {
-		now := time.Now()
+	ctx := context.Background()
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	for now := range ticker.C {
 		elapsed := now.Sub(prevTime).Seconds()
 
-		cpuPct := getCpuMetrics()
-		memStats := getMemoryMetrics()
-		diskStats := getDiskMetrics(elapsed)
-		netStats := getNetworkMetrics(elapsed)
+		cpuPct := getCpuMetrics(ctx)
+		memStats := getMemoryMetrics(ctx)
+		diskStats := getDiskMetrics(ctx, elapsed)
+		netStats := getNetworkMetrics(ctx, elapsed)
 		temp, err := getTemperatureSensors()
 		if err != nil {
 			log.Println(err)
@@ -96,9 +95,9 @@ func (sm *SystemMonitor) CollectMetrics() {
 		mu.Lock()
 
 		// Update disk and timestamp
-		history.Timestamp = now.Format(time.RFC3339)
-		history.Disk = &diskStats
-		history.Temprature = temp
+		systemHistory.Timestamp = now.Format(time.RFC3339)
+		systemHistory.Disk = &diskStats
+		systemHistory.Temprature = temp
 
 		// Append to history and trim if needed
 		mat := response.Matrics{
@@ -106,9 +105,9 @@ func (sm *SystemMonitor) CollectMetrics() {
 			Memory:  &memStats,
 			Network: &netStats,
 		}
-		*history.Matrics = append(*history.Matrics, mat)
-		if len(*history.Matrics) > maxHistory {
-			*history.Matrics = (*history.Matrics)[len(*history.Matrics)-maxHistory:]
+		*systemHistory.Matrics = append(*systemHistory.Matrics, mat)
+		if len(*systemHistory.Matrics) > maxHistory {
+			*systemHistory.Matrics = (*systemHistory.Matrics)[len(*systemHistory.Matrics)-maxHistory:]
 		}
 
 		mu.Unlock()
@@ -132,7 +131,7 @@ func (sm *SystemMonitor) CollectMetrics() {
 func (sm *SystemMonitor) GetHistory() ([]byte, error) {
 	mu.Lock()
 	defer mu.Unlock()
-	return json.Marshal(history)
+	return json.Marshal(systemHistory)
 }
 
 // GetCpuMetrics returns the most recent CPU usage metric as a JSON payload.
@@ -145,15 +144,15 @@ func (sm *SystemMonitor) GetCpuMetrics() ([]byte, error) {
 	defer mu.Unlock()
 
 	var last *float64
-	if len(*history.Matrics) > 0 {
-		last = (*history.Matrics)[len(*history.Matrics)-1].CPU
+	if len(*systemHistory.Matrics) > 0 {
+		last = (*systemHistory.Matrics)[len(*systemHistory.Matrics)-1].CPU
 	}
 
 	return json.Marshal(struct {
 		Timestamp string   `json:"timestamp"`
 		CPU       *float64 `json:"cpu"`
 	}{
-		Timestamp: history.Timestamp,
+		Timestamp: systemHistory.Timestamp,
 		CPU:       last,
 	})
 }
@@ -168,15 +167,15 @@ func (sm *SystemMonitor) GetMemoryMetrics() ([]byte, error) {
 	defer mu.Unlock()
 
 	var last *response.MemoryStats
-	if len(*history.Matrics) > 0 {
-		last = (*history.Matrics)[len(*history.Matrics)-1].Memory
+	if len(*systemHistory.Matrics) > 0 {
+		last = (*systemHistory.Matrics)[len(*systemHistory.Matrics)-1].Memory
 	}
 
 	return json.Marshal(struct {
 		Timestamp string                `json:"timestamp"`
 		Memory    *response.MemoryStats `json:"memory"`
 	}{
-		Timestamp: history.Timestamp,
+		Timestamp: systemHistory.Timestamp,
 		Memory:    last,
 	})
 }
@@ -194,8 +193,8 @@ func (sm *SystemMonitor) GetDiskMetrics() ([]byte, error) {
 		Timestamp string                `json:"timestamp"`
 		Disk      *[]response.DiskStats `json:"disk"`
 	}{
-		Timestamp: history.Timestamp,
-		Disk:      history.Disk,
+		Timestamp: systemHistory.Timestamp,
+		Disk:      systemHistory.Disk,
 	})
 }
 
@@ -209,15 +208,15 @@ func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
 	defer mu.Unlock()
 
 	var last *response.NetworkStats
-	if len(*history.Matrics) > 0 {
-		last = (*history.Matrics)[len(*history.Matrics)-1].Network
+	if len(*systemHistory.Matrics) > 0 {
+		last = (*systemHistory.Matrics)[len(*systemHistory.Matrics)-1].Network
 	}
 
 	return json.Marshal(struct {
 		Timestamp string                 `json:"timestamp"`
 		Network   *response.NetworkStats `json:"network"`
 	}{
-		Timestamp: history.Timestamp,
+		Timestamp: systemHistory.Timestamp,
 		Network:   last,
 	})
 }
@@ -241,18 +240,19 @@ func (sm *SystemMonitor) GetSensorsMetrics() ([]byte, error) {
 		GPU       []*response.CoreTemperatureStats `json:"gpu,omitempty"`
 		Core      []*response.CoreTemperatureStats `json:"core,omitempty"`
 	}{
-		Timestamp: history.Timestamp,
-		CPU:       history.Temprature.CPU,
-		Ambient:   history.Temprature.Ambient,
-		GPU:       history.Temprature.GPU,
-		Core:      history.Temprature.Core,
+		Timestamp: systemHistory.Timestamp,
+		CPU:       systemHistory.Temprature.CPU,
+		Ambient:   systemHistory.Temprature.Ambient,
+		GPU:       systemHistory.Temprature.GPU,
+		Core:      systemHistory.Temprature.Core,
 	})
 }
 
 // getCpuMetrics returns the current CPU usage as a percentage.
 // It returns 0 if an error occurs.
-func getCpuMetrics() float64 {
-	pct, err := cpu.Percent(0, false)
+func getCpuMetrics(ctx context.Context) float64 {
+	pct, err := cpu.PercentWithContext(ctx, 100*time.Millisecond, false)
+
 	if err != nil {
 		log.Println("Error getting CPU usage:", err)
 		return 0
@@ -268,8 +268,8 @@ func getCpuMetrics() float64 {
 //
 // If an error occurs, the function logs the error and returns an empty
 // response.MemoryStats struct.
-func getMemoryMetrics() response.MemoryStats {
-	m, err := mem.VirtualMemory()
+func getMemoryMetrics(ctx context.Context) response.MemoryStats {
+	m, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		log.Println("Error getting memory usage:", err)
 		return response.MemoryStats{}
@@ -294,8 +294,8 @@ func getMemoryMetrics() response.MemoryStats {
 // A slice of response.DiskStats containing the disk usage statistics for each partition.
 // If an error occurs while retrieving partition information, an empty slice is returned
 // and the error is logged.
-func getDiskMetrics(elapsed float64) []response.DiskStats {
-	parts, err := disk.Partitions(false)
+func getDiskMetrics(ctx context.Context, elapsed float64) []response.DiskStats {
+	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		log.Println("Error getting disk partitions:", err)
 		return nil
@@ -348,8 +348,8 @@ func getDiskMetrics(elapsed float64) []response.DiskStats {
 // A response.NetworkStats containing the network traffic statistics.
 // If an error occurs while retrieving I/O counters, an empty struct is returned
 // and the error is logged.
-func getNetworkMetrics(elapsed float64) response.NetworkStats {
-	counters, err := gopsutil_net.IOCounters(true)
+func getNetworkMetrics(ctx context.Context, elapsed float64) response.NetworkStats {
+	counters, err := gopsutil_net.IOCountersWithContext(ctx, true)
 	if err != nil {
 		log.Println("Error getting network stats:", err)
 		return response.NetworkStats{}
@@ -398,19 +398,19 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 		case strings.Contains(key, "package"):
 			// CPU package temperature
 			cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "gpu"):
 			// GPU temperature
 			gpuTemps = append(gpuTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "core"):
 			// CPU core temperature
 			coreTemps = append(coreTemps, &response.CoreTemperatureStats{
-				Name: getFriendlyName(t.SensorKey),
+				Name: getSensorsName(t.SensorKey),
 				Temp: t.Temperature,
 			})
 		case strings.Contains(key, "acpitz"):
@@ -420,7 +420,7 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 			}
 		default:
 			// Try to categorize other sensors
-			friendlyName := getFriendlyName(t.SensorKey)
+			friendlyName := getSensorsName(t.SensorKey)
 			if strings.Contains(strings.ToLower(friendlyName), "cpu") {
 				cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
 					Name: friendlyName,
@@ -458,10 +458,10 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 	return result, nil
 }
 
-// getFriendlyName returns a human-readable name for a sensor based on its key.
-// It performs a simple mapping for common patterns like "package" and "gpu".
-// If no common pattern is found, it title-cases the words in the sensorKey.
-func getFriendlyName(sensorKey string) string {
+// getSensorsName returns a human-readable name for the given sensorKey.
+// It uses simple pattern matching for common patterns and falls back to title-casing
+// the words in sensorKey if no match is found.
+func getSensorsName(sensorKey string) string {
 	// Simple mapping for common patterns
 	key := strings.ToLower(sensorKey)
 
