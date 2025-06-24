@@ -17,6 +17,7 @@ type DockerController struct {
 // NewDockerController creates a new DockerController instance that is responsible for handling docker-related endpoints.
 // It takes a service.DockerService dependency which is used to interact with the Docker daemon.
 func NewDockerController(dockerService service.DockerService) *DockerController {
+	go dockerService.CollectMetrics()
 	return &DockerController{
 		dockerService: dockerService,
 	}
@@ -31,20 +32,28 @@ func (controller *DockerController) streamHandler(c *fiber.Ctx, fetchFunc func()
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
+	c.Status(fiber.StatusOK)
 
-	c.Status(fiber.StatusOK).Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+	// capture context to detect client disconnect
+	ctx := c.Context()
+
+	c.Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for {
-			<-ticker.C
-			data, err := fetchFunc()
-			if err != nil {
-				fmt.Fprintf(w, "data: Error retrieving metrics: %s\n\n", err.Error())
+			select {
+			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				data, err := fetchFunc()
+				if err != nil {
+					fmt.Fprintf(w, "data: Error retrieving metrics: %s\n\n", err.Error())
+					return
+				}
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				w.Flush()
 			}
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			w.Flush()
 		}
 	}))
 
