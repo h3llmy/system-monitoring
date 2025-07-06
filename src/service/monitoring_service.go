@@ -398,20 +398,26 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 		case strings.Contains(key, "package"):
 			// CPU package temperature
 			cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
-				Name: getSensorsName(t.SensorKey),
-				Temp: t.Temperature,
+				Name:     getSensorsName(t.SensorKey),
+				Temp:     t.Temperature,
+				High:     t.High,
+				Critical: t.Critical,
 			})
 		case strings.Contains(key, "gpu"):
 			// GPU temperature
 			gpuTemps = append(gpuTemps, &response.CoreTemperatureStats{
-				Name: getSensorsName(t.SensorKey),
-				Temp: t.Temperature,
+				Name:     getSensorsName(t.SensorKey),
+				Temp:     t.Temperature,
+				High:     t.High,
+				Critical: t.Critical,
 			})
 		case strings.Contains(key, "core"):
 			// CPU core temperature
 			coreTemps = append(coreTemps, &response.CoreTemperatureStats{
-				Name: getSensorsName(t.SensorKey),
-				Temp: t.Temperature,
+				Name:     getSensorsName(t.SensorKey),
+				Temp:     t.Temperature,
+				High:     t.High,
+				Critical: t.Critical,
 			})
 		case strings.Contains(key, "acpitz"):
 			// Ambient temperature - keep the highest one
@@ -423,14 +429,18 @@ func getTemperatureSensors() (*response.TemperatureStats, error) {
 			friendlyName := getSensorsName(t.SensorKey)
 			if strings.Contains(strings.ToLower(friendlyName), "cpu") {
 				cpuTemps = append(cpuTemps, &response.CoreTemperatureStats{
-					Name: friendlyName,
-					Temp: t.Temperature,
+					Name:     friendlyName,
+					Temp:     t.Temperature,
+					High:     t.High,
+					Critical: t.Critical,
 				})
 			} else {
 				// Default to core temps for unknown sensors
 				coreTemps = append(coreTemps, &response.CoreTemperatureStats{
-					Name: friendlyName,
-					Temp: t.Temperature,
+					Name:     friendlyName,
+					Temp:     t.Temperature,
+					High:     t.High,
+					Critical: t.Critical,
 				})
 			}
 		}
