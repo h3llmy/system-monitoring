@@ -358,8 +358,8 @@ func getNetworkMetrics(ctx context.Context, elapsed float64) response.NetworkSta
 	var up, down float64
 	for _, c := range counters {
 		if prev, found := prevNetStats[c.Name]; found {
-			up += (float64(c.BytesSent-prev.BytesSent) * 8 / 1e6) / elapsed
-			down += (float64(c.BytesRecv-prev.BytesRecv) * 8 / 1e6) / elapsed
+			up += (float64(c.BytesSent-prev.BytesSent) * 8) / elapsed
+			down += (float64(c.BytesRecv-prev.BytesRecv) * 8) / elapsed
 		}
 		prevNetStats[c.Name] = c
 	}

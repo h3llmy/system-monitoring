@@ -54,7 +54,7 @@ type (
 
 	// NetworkStats holds network traffic statistics.
 	NetworkStats struct {
-		Up   int64 `json:"up"`   // Mbps
-		Down int64 `json:"down"` // Mbps
+		Up   int64 `json:"up"`   // bps
+		Down int64 `json:"down"` // bps
 	}
 )
