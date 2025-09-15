@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/h3llmy/system-monitoring/src/response"
-	httpClient "github.com/h3llmy/system-monitoring/src/utils/httpClient"
+	"github.com/h3llmy/system-monitoring/src/utils/httpClient"
 )
 
 type JellyfinService struct {

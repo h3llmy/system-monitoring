@@ -26,8 +26,10 @@ type (
 
 	// CoreTemperatureStats holds temperature statistics for a specific core.
 	CoreTemperatureStats struct {
-		Name string  `json:"name"`
-		Temp float64 `json:"temp"`
+		Name     string  `json:"name"`
+		Temp     float64 `json:"temp"`
+		High     float64 `json:"sensorHigh"`
+		Critical float64 `json:"sensorCritical"`
 	}
 
 	// MemoryStats holds memory usage information.
@@ -52,7 +54,7 @@ type (
 
 	// NetworkStats holds network traffic statistics.
 	NetworkStats struct {
-		Up   int64 `json:"up"`   // Mbps
-		Down int64 `json:"down"` // Mbps
+		Up   int64 `json:"up"`   // bps
+		Down int64 `json:"down"` // bps
 	}
 )

@@ -31,20 +31,28 @@ func (controller *MonitoringController) streamHandler(c *fiber.Ctx, fetchFunc fu
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
 	c.Set("Transfer-Encoding", "chunked")
+	c.Status(fiber.StatusOK)
 
-	c.Status(fiber.StatusOK).Context().SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
+	// capture context to detect client disconnect
+	ctx := c.Context()
+
+	c.Context().Response.SetBodyStreamWriter(fasthttp.StreamWriter(func(w *bufio.Writer) {
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for {
-			<-ticker.C
-			data, err := fetchFunc()
-			if err != nil {
-				fmt.Fprintf(w, "data: Error retrieving metrics: %s\n\n", err.Error())
+			select {
+			case <-ctx.Done():
 				return
+			case <-ticker.C:
+				data, err := fetchFunc()
+				if err != nil {
+					fmt.Fprintf(w, "data: Error retrieving metrics: %s\n\n", err)
+					return
+				}
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				w.Flush()
 			}
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			w.Flush()
 		}
 	}))
 
