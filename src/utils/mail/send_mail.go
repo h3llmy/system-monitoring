@@ -1,27 +1,44 @@
 package mail
 
 import (
-	"log"
+	"fmt"
+	"log/slog"
 	"net/smtp"
 	"os"
 )
 
-// SendMail sends a mail to the provided recipient with the given subject and message.
-// The sender is identified by the SMTP_USERNAME, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT environment variables.
-// This function will log and exit if an error occurs while sending the mail.
-func SendMail(to, subject, message string) {
-	username := os.Getenv("SMTP_USERNAME")
-	password := os.Getenv("SMTP_PASSWORD")
-	host := os.Getenv("SMTP_HOST")
-	port := os.Getenv("SMTP_PORT")
+type Mail struct {
+	Username string
+	Password string
+	Host     string
+	Port     string
+}
 
-	log.Printf("username: %s, password: %s, host: %s, port: %s", username, password, host, port)
-	log.Printf("Sending email to %s with subject %s and message %s", to, subject, message)
-	auth := smtp.PlainAuth("", username, password, host)
-	err := smtp.SendMail(host+":"+port, auth, username, []string{to}, []byte(message))
+func NewMail() *Mail {
+	return &Mail{
+		Username: os.Getenv("SMTP_USERNAME"),
+		Password: os.Getenv("SMTP_PASSWORD"),
+		Host:     os.Getenv("SMTP_HOST"),
+		Port:     os.Getenv("SMTP_PORT"),
+	}
+}
+
+// SendMail sends an email to the provided recipient with the given subject and message.
+// The sender is identified by the SMTP_USERNAME, SMTP_PASSWORD, SMTP_HOST, and SMTP_PORT environment variables.
+func (m *Mail) SendMail(to, subject, message string) error {
+	auth := smtp.PlainAuth("", m.Username, m.Password, m.Host)
+
+	// Include the subject and From headers
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+		m.Username, to, subject, message)
+
+	err := smtp.SendMail(m.Host+":"+m.Port, auth, m.Username, []string{to}, []byte(msg))
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("Error sending email", "error", err)
+		return err
 	}
 
-	log.Println("Email sent successfully")
+	slog.Info("Email sent successfully", "recipient", to)
+
+	return nil
 }

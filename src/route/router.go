@@ -6,6 +6,7 @@ import (
 	"github.com/h3llmy/system-monitoring/src/controller"
 	"github.com/h3llmy/system-monitoring/src/service"
 	httpClient "github.com/h3llmy/system-monitoring/src/utils/httpClient"
+	"github.com/h3llmy/system-monitoring/src/utils/mail"
 
 	"github.com/gofiber/fiber/v2"
 	"go.uber.org/dig"
@@ -31,11 +32,13 @@ func setupContainer() *dig.Container {
 	container.Provide(func() *httpClient.Client {
 		return httpClient.NewClient(10 * time.Second)
 	})
+	container.Provide(mail.NewMail)
 
 	// Provide services
 	container.Provide(service.NewSystemMonitorService)
 	container.Provide(service.NewJellyfinService)
 	container.Provide(service.NewDockerService)
+	container.Provide(service.NewAlertService)
 
 	// Provide controllers
 	container.Provide(controller.NewMonitoringController)

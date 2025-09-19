@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"path"
 	"strings"
@@ -89,7 +89,7 @@ func (sm *SystemMonitor) CollectMetrics() {
 		netStats := getNetworkMetrics(ctx, elapsed)
 		temp, err := getTemperatureSensors()
 		if err != nil {
-			log.Println(err)
+			slog.Error("Failed to get temperature sensors", err)
 		}
 
 		mu.Lock()
@@ -254,7 +254,7 @@ func getCpuMetrics(ctx context.Context) float64 {
 	pct, err := cpu.PercentWithContext(ctx, 100*time.Millisecond, false)
 
 	if err != nil {
-		log.Println("Error getting CPU usage:", err)
+		slog.Error("Error getting CPU usage", err)
 		return 0
 	}
 	return math.Round(pct[0]*100) / 100
@@ -271,7 +271,7 @@ func getCpuMetrics(ctx context.Context) float64 {
 func getMemoryMetrics(ctx context.Context) response.MemoryStats {
 	m, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
-		log.Println("Error getting memory usage:", err)
+		slog.Error("Error getting memory usage", err)
 		return response.MemoryStats{}
 	}
 	return response.MemoryStats{
@@ -297,7 +297,7 @@ func getMemoryMetrics(ctx context.Context) response.MemoryStats {
 func getDiskMetrics(ctx context.Context, elapsed float64) []response.DiskStats {
 	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
-		log.Println("Error getting disk partitions:", err)
+		slog.Error("Error getting disk partitions", err)
 		return nil
 	}
 	counters, _ := disk.IOCounters()
@@ -351,7 +351,7 @@ func getDiskMetrics(ctx context.Context, elapsed float64) []response.DiskStats {
 func getNetworkMetrics(ctx context.Context, elapsed float64) response.NetworkStats {
 	counters, err := gopsutil_net.IOCountersWithContext(ctx, true)
 	if err != nil {
-		log.Println("Error getting network stats:", err)
+		slog.Error("Error getting network stats", err)
 		return response.NetworkStats{}
 	}
 

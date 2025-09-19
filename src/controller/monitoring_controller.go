@@ -17,8 +17,9 @@ type MonitoringController struct {
 // NewMonitoringController creates a new MonitoringController instance that is responsible for handling monitoring endpoints.
 // It takes a service.MonitoringService dependency which is used to interact with the monitoring service. The provided service
 // is started in a goroutine to collect system metrics in the background.
-func NewMonitoringController(monitoringService service.MonitoringService) *MonitoringController {
+func NewMonitoringController(monitoringService service.MonitoringService, alertService *service.AlertService) *MonitoringController {
 	go monitoringService.CollectMetrics()
+	go alertService.StartMonitoringAlert()
 	return &MonitoringController{monitoringService: monitoringService}
 }
 

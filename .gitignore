@@ -1,8 +1,12 @@
 .env*
 !.env.example
 
+public/
+
 tmp
 
 monitoring
 
 TODO*
+
+main*

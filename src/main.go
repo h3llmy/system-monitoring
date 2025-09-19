@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/h3llmy/system-monitoring/src/config"
@@ -31,6 +32,8 @@ import (
 // - Starts the HTTP server on port 3000.
 func main() {
 	loadEnv()
+	setupLogger()
+
 	app := fiber.New(config.ApplicationConfig)
 
 	port := os.Getenv("PORT")
@@ -60,7 +63,7 @@ func initMiddlewares(app *fiber.App) {
 	app.Use(limiter.New(config.LimiterConfig))
 	app.Use(recover.New())
 
-	app.Static("/", "./system-monitoring-dashboard/dist")
+	app.Static("/", "./public")
 	app.Get("/monitor", monitor.New(config.MonitorConfig))
 }
 
@@ -72,4 +75,14 @@ func loadEnv() {
 			log.Fatalf("Error loading .env file: %v", err)
 		}
 	}
+}
+
+// setupLogger sets up the default logger for the application.
+// It creates a new logger with a TextHandler that writes to stdout,
+// and sets the log level to Debug.
+func setupLogger() {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger)
 }

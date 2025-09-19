@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -38,7 +38,7 @@ func (ds *dockerService) CollectMetrics() {
 
 		cancel()
 		if err != nil {
-			log.Println("Failed to get Docker stats:", err)
+			slog.Error("Failed to get Docker stats", err)
 			continue
 		}
 

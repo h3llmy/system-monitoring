@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/h3llmy/system-monitoring/src/response"
 	"github.com/h3llmy/system-monitoring/src/service"
-	"github.com/h3llmy/system-monitoring/src/utils/mail"
 )
 
 type JellyfinController struct {
@@ -34,8 +33,6 @@ func (controller *JellyfinController) GetJellyfinCount(c *fiber.Ctx) error {
 			Message: err.Error(),
 		})
 	}
-
-	go mail.SendMail("helmytrisna86@gmail.com", "Jellyfin Count", "hello")
 
 	return c.JSON(itemCount)
 }
