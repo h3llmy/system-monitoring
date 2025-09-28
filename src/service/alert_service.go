@@ -24,7 +24,7 @@ type AlertService struct {
 func NewAlertService(mailer *mail.Mail) *AlertService {
 	return &AlertService{
 		Mailer:        mailer,
-		alertCooldown: 5 * time.Minute, // send at most once per minute per alert type
+		alertCooldown: 10 * time.Minute,
 	}
 }
 
@@ -52,6 +52,8 @@ func (s *AlertService) StartMonitoringAlert() error {
 // The email alert is sent to the email address specified by the NOTIFICATION_EMAIL environment
 // variable. The email alert has the subject "CPU Alert" and the body "The CPU usage is high".
 func (s *AlertService) CpuAlert() error {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	if len(*systemHistory.Matrics) < maxHistory {
 		return nil
 	}
@@ -77,6 +79,8 @@ func (s *AlertService) CpuAlert() error {
 // The percentage is calculated by dividing the total memory used over the last maxHistory metrics
 // by the total memory available on the system, and then multiplying by 100.
 func (s *AlertService) MemoryAlert() error {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	if len(*systemHistory.Matrics) < maxHistory {
 		return nil
 	}
@@ -111,6 +115,8 @@ func (s *AlertService) MemoryAlert() error {
 // "Temperature Alert" and the body contains the names of the sensors with high
 // temperatures.
 func (s *AlertService) TemperatureAlert() error {
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	if systemHistory.Temprature == nil {
 		return nil
 	}

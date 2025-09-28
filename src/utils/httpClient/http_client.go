@@ -39,7 +39,7 @@ func (c *Client) SetHeaders(headers map[string]string) {
 // The request body is constructed by marshaling the provided body to JSON.
 // The response body is read and returned as a byte array.
 // If an error occurs while making the request, it is returned instead.
-func (c *Client) Request(method, url string, body interface{}) ([]byte, error) {
+func (c *Client) Request(method, url string, body any) ([]byte, error) {
 	var reqBody []byte
 	var err error
 	if body != nil {
@@ -82,14 +82,14 @@ func (c *Client) Get(url string) ([]byte, error) {
 // Post makes a POST request to the provided URL with the given body and returns the response body as a byte array.
 // The body is marshaled to JSON before being sent.
 // If an error occurs while making the request, it is returned instead.
-func (c *Client) Post(url string, body interface{}) ([]byte, error) {
+func (c *Client) Post(url string, body any) ([]byte, error) {
 	return c.Request(http.MethodPost, url, body)
 }
 
 // Put makes a PUT request to the provided URL with the given body and returns the response body as a byte array.
 // The body is marshaled to JSON before being sent.
 // If an error occurs while making the request, it is returned instead.
-func (c *Client) Put(url string, body interface{}) ([]byte, error) {
+func (c *Client) Put(url string, body any) ([]byte, error) {
 	return c.Request(http.MethodPut, url, body)
 }
 

@@ -70,7 +70,7 @@ func initMiddlewares(app *fiber.App) {
 // loadEnv loads environment variables from a .env file.
 // If the file cannot be loaded, the function panics with an error message.
 func loadEnv() {
-	if os.Getenv("ENV") != "production" {
+	if os.Getenv("APP_ENV") != "production" {
 		if err := env.Load(); err != nil {
 			log.Fatalf("Error loading .env file: %v", err)
 		}

@@ -13,5 +13,6 @@ func DockerRouter(version fiber.Router, container *dig.Container) {
 		controller *controller.DockerController,
 	) {
 		dockerRoute.Get("/", controller.DockerHandler)
+		dockerRoute.Get("/status", controller.DockerStatus)
 	})
 }

@@ -66,3 +66,10 @@ func (controller *DockerController) streamHandler(c *fiber.Ctx, fetchFunc func()
 func (controller *DockerController) DockerHandler(c *fiber.Ctx) error {
 	return controller.streamHandler(c, controller.dockerService.GetDockerMetrics)
 }
+
+// DockerStatus streams the collected Docker daemon status to the client in a series of events.
+// The client will receive a continuous stream of events, with the type "data" and a payload of the current Docker daemon status.
+// The event-stream connection is kept open until the client closes it.
+func (controller *DockerController) DockerStatus(c *fiber.Ctx) error {
+	return controller.streamHandler(c, controller.dockerService.GetDockerStatus)
+}

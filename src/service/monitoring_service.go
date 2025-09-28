@@ -43,6 +43,8 @@ func NewSystemMonitorService() MonitoringService {
 }
 
 var (
+	prevTime         time.Time
+	maxHistory       = 60
 	systemHistory    response.SystemMetrics
 	prevNetStats     = make(map[string]gopsutil_net.IOCountersStat)
 	prevDiskCounters = make(map[string]disk.IOCountersStat)
@@ -89,10 +91,10 @@ func (sm *SystemMonitor) CollectMetrics() {
 		netStats := getNetworkMetrics(ctx, elapsed)
 		temp, err := getTemperatureSensors()
 		if err != nil {
-			slog.Error("Failed to get temperature sensors", err)
+			slog.Error("Failed to get temperature sensors", "error", err)
 		}
 
-		mu.Lock()
+		rwMutex.Lock()
 
 		// Update disk and timestamp
 		systemHistory.Timestamp = now.Format(time.RFC3339)
@@ -110,7 +112,7 @@ func (sm *SystemMonitor) CollectMetrics() {
 			*systemHistory.Matrics = (*systemHistory.Matrics)[len(*systemHistory.Matrics)-maxHistory:]
 		}
 
-		mu.Unlock()
+		rwMutex.Unlock()
 
 		prevTime = now
 		time.Sleep(time.Until(now.Add(1 * time.Second)))
@@ -129,8 +131,8 @@ func (sm *SystemMonitor) CollectMetrics() {
 //
 // The payload is ordered by timestamp, with the most recent metrics first.
 func (sm *SystemMonitor) GetHistory() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.RLock()
+	defer rwMutex.RUnlock()
 	return json.Marshal(systemHistory)
 }
 
@@ -140,8 +142,8 @@ func (sm *SystemMonitor) GetHistory() ([]byte, error) {
 // - Timestamp: the ISO 8601 timestamp of when the metrics were collected
 // - CPU: the CPU usage percentage
 func (sm *SystemMonitor) GetCpuMetrics() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 
 	var last *float64
 	if len(*systemHistory.Matrics) > 0 {
@@ -163,8 +165,8 @@ func (sm *SystemMonitor) GetCpuMetrics() ([]byte, error) {
 // - Timestamp: the ISO 8601 timestamp of when the metrics were collected
 // - Memory: memory usage statistics (used, total)
 func (sm *SystemMonitor) GetMemoryMetrics() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 
 	var last *response.MemoryStats
 	if len(*systemHistory.Matrics) > 0 {
@@ -186,8 +188,8 @@ func (sm *SystemMonitor) GetMemoryMetrics() ([]byte, error) {
 // - Timestamp: the ISO 8601 timestamp of when the metrics were collected
 // - Disk: disk usage statistics (used, total)
 func (sm *SystemMonitor) GetDiskMetrics() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 
 	return json.Marshal(struct {
 		Timestamp string                `json:"timestamp"`
@@ -204,8 +206,8 @@ func (sm *SystemMonitor) GetDiskMetrics() ([]byte, error) {
 // - Timestamp: the ISO 8601 timestamp of when the metrics were collected
 // - Network: network traffic statistics (up, down)
 func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 
 	var last *response.NetworkStats
 	if len(*systemHistory.Matrics) > 0 {
@@ -230,8 +232,8 @@ func (sm *SystemMonitor) GetNetworkMetrics() ([]byte, error) {
 // - GPU: a slice of CoreTemperatureStats for each GPU core
 // - Core: a slice of CoreTemperatureStats for each core (both CPU and GPU)
 func (sm *SystemMonitor) GetSensorsMetrics() ([]byte, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	rwMutex.Lock()
+	defer rwMutex.Unlock()
 
 	return json.Marshal(struct {
 		Timestamp string                           `json:"timestamp"`
@@ -254,7 +256,7 @@ func getCpuMetrics(ctx context.Context) float64 {
 	pct, err := cpu.PercentWithContext(ctx, 100*time.Millisecond, false)
 
 	if err != nil {
-		slog.Error("Error getting CPU usage", err)
+		slog.Error("Error getting CPU usage", "error", err)
 		return 0
 	}
 	return math.Round(pct[0]*100) / 100
@@ -271,7 +273,7 @@ func getCpuMetrics(ctx context.Context) float64 {
 func getMemoryMetrics(ctx context.Context) response.MemoryStats {
 	m, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
-		slog.Error("Error getting memory usage", err)
+		slog.Error("Error getting memory usage", "error", err)
 		return response.MemoryStats{}
 	}
 	return response.MemoryStats{
@@ -297,7 +299,7 @@ func getMemoryMetrics(ctx context.Context) response.MemoryStats {
 func getDiskMetrics(ctx context.Context, elapsed float64) []response.DiskStats {
 	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
-		slog.Error("Error getting disk partitions", err)
+		slog.Error("Error getting disk partitions", "error", err)
 		return nil
 	}
 	counters, _ := disk.IOCounters()
@@ -351,7 +353,7 @@ func getDiskMetrics(ctx context.Context, elapsed float64) []response.DiskStats {
 func getNetworkMetrics(ctx context.Context, elapsed float64) response.NetworkStats {
 	counters, err := gopsutil_net.IOCountersWithContext(ctx, true)
 	if err != nil {
-		slog.Error("Error getting network stats", err)
+		slog.Error("Error getting network stats", "error", err)
 		return response.NetworkStats{}
 	}
 
